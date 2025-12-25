@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useUser, useFirestore, useAuth } from '@/firebase';
+import { useUser, useFirestore, useAuth, useMemoFirebase } from '@/firebase';
 import { collection } from 'firebase/firestore';
 import { FolderKanban, Hash, HardDrive, ServerCrash, Loader2, LogIn, UserPlus } from 'lucide-react';
 import { useCollection } from '@/firebase/firestore/use-collection';
@@ -44,7 +44,9 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const collectionsRef = user ? collection(firestore, `users/${user.uid}/firebaseCollections`) : null;
+  const collectionsRef = useMemoFirebase(() => 
+    user ? collection(firestore, `users/${user.uid}/firebaseCollections`) : null
+  , [user, firestore]);
   const { data: firebaseCollections, isLoading: isLoadingCollections } = useCollection(collectionsRef);
 
   function formatBytes(bytes: number, decimals = 2) {
