@@ -38,6 +38,7 @@ type CollectionInfo = {
 export default function Home() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
+  const auth = useAuth();
   const [collections, setCollections] = useState<CollectionInfo[] | null>(null);
   const [totalSize, setTotalSize] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -192,7 +193,7 @@ export default function Home() {
                   Suas coleções do Firestore e suas contagens de documentos.
                 </CardDescription>
               </div>
-              <Button variant="outline" onClick={() => useAuth().signOut()}>Sair</Button>
+              <Button variant="outline" onClick={() => auth.signOut()}>Sair</Button>
             </div>
           </CardHeader>
           <CardContent>
