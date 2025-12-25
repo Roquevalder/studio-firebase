@@ -4,7 +4,7 @@ import { Toaster } from "@/components/ui/toaster"
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 
 export const metadata: Metadata = {
-  title: 'Firebase Lister',
+  title: 'DB Gestão de Frequência',
   description: 'Liste coleções e conte documentos em seu banco de dados Firebase.',
 };
 

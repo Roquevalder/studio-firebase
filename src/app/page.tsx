@@ -90,7 +90,7 @@ export default function Home() {
         <SidebarHeader>
           <div className="flex items-center gap-2">
             <Database className="h-6 w-6 text-primary" />
-            <span className="text-lg font-semibold">Firebase Lister</span>
+            <span className="text-lg font-semibold">DB Gestão de Frequência</span>
           </div>
         </SidebarHeader>
         <SidebarContent className="p-2">
