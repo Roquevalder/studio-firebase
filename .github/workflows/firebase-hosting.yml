@@ -10,9 +10,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       FIREBASE_CLI_EXPERIMENTS: webframeworks
-    defaults:
-      run:
-        working-directory: ./studio-firebase
     steps:
       - uses: actions/checkout@v4
 
