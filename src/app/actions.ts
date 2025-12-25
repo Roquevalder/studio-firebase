@@ -5,12 +5,62 @@ import * as admin from 'firebase-admin';
 type CollectionInfo = {
   name: string;
   count: number;
+  sizeBytes: number;
 };
 
 type ActionResult = {
-  data?: CollectionInfo[];
+  data?: {
+    collections: CollectionInfo[];
+    totalSizeBytes: number;
+  };
   error?: string;
 };
+
+// Based on https://firebase.google.com/docs/firestore/storage-size
+function getDocumentSize(doc: admin.firestore.DocumentData): number {
+    let size = 16; // The document name
+    for (const key in doc) {
+        if (Object.prototype.hasOwnProperty.call(doc, key)) {
+            size += Buffer.byteLength(key, 'utf8') + 1;
+            size += getValueSize(doc[key]);
+        }
+    }
+    return size + 32;
+}
+
+function getValueSize(value: any): number {
+    const type = typeof value;
+    if (value === null) {
+        return 1;
+    }
+    switch (type) {
+        case 'string':
+            return Buffer.byteLength(value, 'utf8') + 1;
+        case 'boolean':
+            return 1;
+        case 'number':
+            return 8;
+        case 'object':
+            if (value instanceof admin.firestore.Timestamp) {
+                return 8;
+            }
+            if (value instanceof admin.firestore.GeoPoint) {
+                return 16;
+            }
+            if (value instanceof Buffer) {
+                return value.length;
+            }
+            if (Array.isArray(value)) {
+                return value.reduce((acc, curr) => acc + getValueSize(curr), 0);
+            }
+            // For maps
+            return Object.keys(value).reduce((acc, key) => {
+                return acc + Buffer.byteLength(key, 'utf8') + 1 + getValueSize(value[key]);
+            }, 0);
+        default:
+            return 0;
+    }
+}
 
 export async function getCollectionsAndCounts(
   configJson: string
@@ -18,44 +68,58 @@ export async function getCollectionsAndCounts(
   try {
     const serviceAccount = JSON.parse(configJson);
 
-    // Ensure that project_id is present, as it's required by the SDK
     if (!serviceAccount.project_id) {
         return { error: 'O JSON da conta de serviço deve incluir um "project_id".' };
     }
 
-    // Initialize the app if not already initialized
     if (!admin.apps.length) {
       admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
       });
-    } else {
-      // If an app is already initialized, it might be from a previous action call.
-      // Firebase admin SDK throws an error if you initialize the same app again.
-      // Here, we assume the credentials should be the same for this user session, so we don't re-initialize.
-      // For a multi-user app, you'd need a named app instance per user.
     }
 
     const db = admin.firestore();
     const collections = await db.listCollections();
 
     if (collections.length === 0) {
-      return { data: [] };
+      return { data: { collections: [], totalSizeBytes: 0 } };
     }
 
-    const countPromises = collections.map(async (col) => {
+    let totalSizeBytes = 0;
+
+    const collectionPromises = collections.map(async (col) => {
       const countSnapshot = await col.count().get();
+      const count = countSnapshot.data().count;
+
+      const docsSnapshot = await col.limit(100).get(); // Limit to 100 docs for size estimation
+      let collectionSizeBytes = 0;
+      let docsInspected = 0;
+
+      if (!docsSnapshot.empty) {
+        docsSnapshot.forEach(doc => {
+            collectionSizeBytes += getDocumentSize(doc.data());
+        });
+        docsInspected = docsSnapshot.size;
+      }
+      
+      const estimatedCollectionSize = docsInspected > 0 
+        ? (collectionSizeBytes / docsInspected) * count 
+        : 0;
+
+      totalSizeBytes += estimatedCollectionSize;
+
       return {
         name: col.id,
-        count: countSnapshot.data().count,
+        count: count,
+        sizeBytes: estimatedCollectionSize,
       };
     });
 
-    const data = await Promise.all(countPromises);
+    const data = await Promise.all(collectionPromises);
     
-    // Sort collections alphabetically by name
     data.sort((a, b) => a.name.localeCompare(b.name));
 
-    return { data };
+    return { data: { collections: data, totalSizeBytes } };
   } catch (e: any) {
     let errorMessage = 'Ocorreu um erro desconhecido.';
     
@@ -67,7 +131,6 @@ export async function getCollectionsAndCounts(
       errorMessage = e.message;
     }
     
-    // In development, you might want more detailed logs
     console.error("Firebase connection error:", e);
 
     return { error: errorMessage };

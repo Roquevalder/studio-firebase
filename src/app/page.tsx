@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { FolderKanban, Hash, Loader2, ServerCrash } from 'lucide-react';
+import { FolderKanban, Hash, Loader2, ServerCrash, HardDrive } from 'lucide-react';
 
 import { getCollectionsAndCounts } from '@/app/actions';
 import { Button } from '@/components/ui/button';
@@ -57,10 +57,12 @@ const formSchema = z.object({
 type CollectionInfo = {
   name: string;
   count: number;
+  sizeBytes: number;
 };
 
 export default function Home() {
   const [collections, setCollections] = useState<CollectionInfo[] | null>(null);
+  const [totalSize, setTotalSize] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -71,17 +73,28 @@ export default function Home() {
     },
   });
 
+  function formatBytes(bytes: number, decimals = 2) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const dm = decimals < 0 ? 0 : decimals;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+  }
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     setError(null);
     setCollections(null);
+    setTotalSize(null);
 
     const result = await getCollectionsAndCounts(values.firebaseConfig);
 
     if (result.error) {
       setError(result.error);
     } else if (result.data) {
-      setCollections(result.data);
+      setCollections(result.data.collections);
+      setTotalSize(result.data.totalSizeBytes);
     }
 
     setIsLoading(false);
@@ -91,6 +104,7 @@ export default function Home() {
     if (isLoading) {
       return (
         <div className="space-y-4 mt-6">
+          <Skeleton className="h-24 w-full" />
           <Skeleton className="h-12 w-full" />
           {[...Array(3)].map((_, i) => (
             <div key={i} className="flex items-center space-x-4 p-4 border rounded-md">
@@ -117,49 +131,74 @@ export default function Home() {
 
     if (collections) {
       return (
-        <div className="mt-6 rounded-lg border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>
-                  <div className="flex items-center gap-2">
-                    <FolderKanban className="h-4 w-4" />
-                    Nome da Coleção
-                  </div>
-                </TableHead>
-                <TableHead className="text-right w-[200px]">
-                  <div className="flex items-center gap-2 justify-end">
-                    <Hash className="h-4 w-4" />
-                    Qtd. de Documentos
-                  </div>
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {collections.length === 0 ? (
+        <>
+          {totalSize !== null && (
+             <Card className="mt-6">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-sm font-medium">Tamanho Total Estimado</CardTitle>
+                    <HardDrive className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold">{formatBytes(totalSize)}</div>
+                    <p className="text-xs text-muted-foreground">
+                        Estimativa baseada nos primeiros 100 documentos de cada coleção.
+                    </p>
+                </CardContent>
+             </Card>
+          )}
+          <div className="mt-4 rounded-lg border">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell
-                    colSpan={2}
-                    className="text-center text-muted-foreground h-24"
-                  >
-                    Nenhuma coleção encontrada.
-                  </TableCell>
+                  <TableHead>
+                    <div className="flex items-center gap-2">
+                      <FolderKanban className="h-4 w-4" />
+                      Nome da Coleção
+                    </div>
+                  </TableHead>
+                  <TableHead className="text-right w-[200px]">
+                    <div className="flex items-center gap-2 justify-end">
+                      <Hash className="h-4 w-4" />
+                      Qtd. de Documentos
+                    </div>
+                  </TableHead>
+                  <TableHead className="text-right w-[200px]">
+                    <div className="flex items-center gap-2 justify-end">
+                      <HardDrive className="h-4 w-4" />
+                      Tamanho (Est.)
+                    </div>
+                  </TableHead>
                 </TableRow>
-              ) : (
-                collections.map((collection) => (
-                  <TableRow key={collection.name}>
-                    <TableCell className="font-medium">
-                      {collection.name}
-                    </TableCell>
-                    <TableCell className="text-right font-mono">
-                      {collection.count.toLocaleString('pt-BR')}
+              </TableHeader>
+              <TableBody>
+                {collections.length === 0 ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={3}
+                      className="text-center text-muted-foreground h-24"
+                    >
+                      Nenhuma coleção encontrada.
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
+                ) : (
+                  collections.map((collection) => (
+                    <TableRow key={collection.name}>
+                      <TableCell className="font-medium">
+                        {collection.name}
+                      </TableCell>
+                      <TableCell className="text-right font-mono">
+                        {collection.count.toLocaleString('pt-BR')}
+                      </TableCell>
+                      <TableCell className="text-right font-mono">
+                        {formatBytes(collection.sizeBytes)}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </>
       );
     }
 
@@ -177,8 +216,8 @@ export default function Home() {
           <CardHeader>
             <CardTitle className="text-3xl font-headline tracking-tight">Listador Firebase</CardTitle>
             <CardDescription>
-              Conecte-se à sua conta Firebase para listar todas as coleções e a
-              quantidade de documentos em cada uma.
+              Conecte-se à sua conta Firebase para listar todas as coleções, a
+              quantidade de documentos e o tamanho estimado em cada uma.
             </CardDescription>
           </CardHeader>
           <CardContent>
