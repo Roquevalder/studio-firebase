@@ -57,13 +57,12 @@ export function AuthForm({ isLogin }: AuthFormProps) {
         return 'O formato do email fornecido não é válido.';
       case 'auth/user-not-found':
       case 'auth/wrong-password':
+      case 'auth/invalid-credential':
         return 'Email ou senha incorretos.';
       case 'auth/email-already-in-use':
         return 'Este email já está em uso por outra conta.';
       case 'auth/weak-password':
         return 'A senha é muito fraca. Tente uma mais forte.';
-      case 'auth/invalid-credential':
-        return 'As credenciais fornecidas estão incorretas ou expiraram.';
       default:
         return 'Ocorreu um erro de autenticação. Tente novamente.';
     }
