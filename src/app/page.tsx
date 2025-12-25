@@ -49,8 +49,8 @@ export default function Home() {
 
 
   const collectionsRef = useMemoFirebase(() => 
-    user ? collection(firestore, `users/${user.uid}/firebaseCollections`) : null
-  , [user, firestore]);
+    firestore ? collection(firestore, `firebaseCollections`) : null
+  , [firestore]);
   const { data: firebaseCollections, isLoading: isLoadingCollections } = useCollection<CollectionInfo>(collectionsRef);
   
   const handleAddCollection = async (e: React.FormEvent) => {
@@ -111,6 +111,7 @@ export default function Home() {
     return <AuthScreen />
   }
 
+  const userCollections = firebaseCollections?.filter(c => c.userAccountId === user.uid) || [];
 
   const renderContent = () => {
     if (isLoadingCollections) {
@@ -142,7 +143,7 @@ export default function Home() {
     }
     
     if (firebaseCollections) {
-       const totalSizeBytes = firebaseCollections.reduce((acc, coll) => acc + (coll.documentCount || 0), 0);
+       const totalSizeBytes = userCollections.reduce((acc, coll) => acc + (coll.documentCount || 0), 0);
 
       return (
         <>
@@ -183,7 +184,7 @@ export default function Home() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {firebaseCollections.length === 0 ? (
+                {userCollections.length === 0 ? (
                   <TableRow>
                     <TableCell
                       colSpan={3}
@@ -193,7 +194,7 @@ export default function Home() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  firebaseCollections.map((collection) => (
+                  userCollections.map((collection) => (
                     <TableRow key={collection.id}>
                       <TableCell className="font-medium">
                         {collection.name}
@@ -289,7 +290,8 @@ export default function Home() {
 
 function AuthScreen() {
   const [isLogin, setIsLogin] = useState(true);
-
+  const auth = useAuth();
+  
   return (
     <main className="flex min-h-screen w-full flex-col items-center justify-center bg-background p-4 sm:p-8">
       <div className="w-full max-w-md">
