@@ -1,9 +1,9 @@
 'use client';
 
-import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore'
+import { getFirestore } from 'firebase/firestore';
+import { firebaseConfig } from './config';
 
 // IMPORTANT: DO NOT MODIFY THIS FUNCTION
 export function initializeFirebase() {
@@ -17,11 +17,12 @@ export function initializeFirebase() {
       // Attempt to initialize via Firebase App Hosting environment variables
       firebaseApp = initializeApp();
     } catch (e) {
-      // Only warn in production because it's normal to use the firebaseConfig to initialize
-      // during development
-      if (process.env.NODE_ENV === "production") {
-        console.warn('Automatic initialization failed. Falling back to firebase config object.', e);
-      }
+      // This fallback is for local development or environments where auto-init is not available.
+      // It will use a configuration object if direct initialization fails.
+      // Note: A valid firebaseConfig object must be available in that case.
+      console.warn(
+        'Automatic Firebase initialization failed. Falling back to local configuration. This is normal in local development.',
+      );
       firebaseApp = initializeApp(firebaseConfig);
     }
 
@@ -36,7 +37,7 @@ export function getSdks(firebaseApp: FirebaseApp) {
   return {
     firebaseApp,
     auth: getAuth(firebaseApp),
-    firestore: getFirestore(firebaseApp)
+    firestore: getFirestore(firebaseApp),
   };
 }
 

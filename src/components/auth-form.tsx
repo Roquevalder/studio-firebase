@@ -77,12 +77,13 @@ export function AuthForm({ isLogin }: AuthFormProps) {
       } else {
         await initiateEmailSignUp(auth, values.email, values.password);
       }
+      // On success, the parent component will handle the redirect.
+      // We don't need to set loading to false here.
     } catch (e) {
       const authError = e as AuthError;
       setError(getFriendlyErrorMessage(authError.code));
-      setIsLoading(false);
+      setIsLoading(false); // Stop loading on error
     }
-    // No need to setIsLoading(false) on success, as the user redirect will happen
   }
 
   return (
