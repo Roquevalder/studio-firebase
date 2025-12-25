@@ -11,10 +11,6 @@ import {
   SidebarHeader,
   SidebarContent,
   SidebarFooter,
-  SidebarInset,
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton,
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import {
@@ -36,9 +32,6 @@ import {
   TableBody,
   TableCell,
 } from '@/components/ui/table';
-import { addDocumentNonBlocking, deleteDocumentNonBlocking, useCollection } from '@/firebase/firestore-non-blocking';
-import { doc } from 'firebase/firestore';
-
 
 // Defines the structure for a simple collection analysis (total count)
 interface SimpleAnalysis {
@@ -86,33 +79,33 @@ export default function Home() {
 
   return (
     <SidebarProvider>
-      <Sidebar>
-        <SidebarHeader>
-          <div className="flex items-center gap-2">
-            <Database className="h-6 w-6 text-primary" />
-            <span className="text-lg font-semibold">DB Gestão de Frequência</span>
-          </div>
-        </SidebarHeader>
-        <SidebarContent className="p-2">
-          <CollectionManager 
-            analyzedCollections={analyzedCollections}
-            setAnalyzedCollections={setAnalyzedCollections}
-          />
-        </SidebarContent>
-        <SidebarFooter>
-          <div className="flex items-center justify-between p-2">
-            <div className="flex items-center gap-2 overflow-hidden">
-                <span className="truncate text-sm font-medium">{user.email}</span>
+      <div className="flex min-h-screen">
+        <Sidebar>
+          <SidebarHeader>
+            <div className="flex items-center gap-2">
+              <Database className="h-6 w-6 text-primary" />
+              <span className="text-lg font-semibold">DB Gestão de Frequência</span>
             </div>
-            <Button variant="outline" size="sm" onClick={handleSignOut}>Sair</Button>
-          </div>
-        </SidebarFooter>
-      </Sidebar>
-      <SidebarInset>
-        <div className="p-4 sm:p-8">
+          </SidebarHeader>
+          <SidebarContent className="p-2">
+            <CollectionManager 
+              analyzedCollections={analyzedCollections}
+              setAnalyzedCollections={setAnalyzedCollections}
+            />
+          </SidebarContent>
+          <SidebarFooter>
+            <div className="flex items-center justify-between p-2">
+              <div className="flex items-center gap-2 overflow-hidden">
+                  <span className="truncate text-sm font-medium">{user.email}</span>
+              </div>
+              <Button variant="outline" size="sm" onClick={handleSignOut}>Sair</Button>
+            </div>
+          </SidebarFooter>
+        </Sidebar>
+        <main className="flex-1 p-4 sm:p-8">
           <AnalyzedCollectionsList analyzedCollections={analyzedCollections} />
-        </div>
-      </SidebarInset>
+        </main>
+      </div>
     </SidebarProvider>
   );
 }
@@ -231,28 +224,24 @@ function CollectionManager({ analyzedCollections, setAnalyzedCollections }: Coll
       <Separator />
       <div className="flex-1 overflow-y-auto">
         <p className="px-2 text-xs text-muted-foreground">COLEÇÕES ADICIONADAS</p>
-        <SidebarMenu>
+        <div className="flex flex-col gap-1 py-2">
           {analyzedCollections.map((col) => (
-            <SidebarMenuItem key={col.name}>
-              <SidebarMenuButton className="justify-between" size="sm" asChild>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <FileText />
-                    <span>{col.name}</span>
-                  </div>
-                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleRemoveCollection(col.name)}>
-                    <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive"/>
-                  </Button>
+            <div key={col.name} className="flex items-center justify-between rounded-md p-2 pr-1 hover:bg-muted">
+                <div className="flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  <span className="text-sm">{col.name}</span>
                 </div>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
+                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleRemoveCollection(col.name)}>
+                  <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive"/>
+                </Button>
+            </div>
           ))}
           {analyzedCollections.length === 0 && (
               <div className="p-4 text-center text-xs text-muted-foreground">
                   Nenhuma coleção adicionada.
               </div>
           )}
-        </SidebarMenu>
+        </div>
       </div>
     </div>
   );
