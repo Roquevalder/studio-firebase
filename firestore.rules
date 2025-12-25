@@ -109,22 +109,22 @@ service cloud.firestore {
       allow create: if isOwner(userAccountId) && isValidNewUserAccount(userAccountId);
       allow update: if isExistingOwner(userAccountId) && isImmutableUserAccount();
       allow delete: if isExistingOwner(userAccountId);
-    }
 
-    /**
-     * @description Manages Firebase collection metadata owned by a specific user.
-     * @path        /users/{userAccountId}/firebaseCollections/{firebaseCollectionId}
-     * @allow       (create, get, list, update, delete) A user can fully manage their own collection documents.
-     * @deny        (create) A user trying to create a collection document under another user's account.
-     * @deny        (get, list) A user trying to read or list another user's collections.
-     * @principle   Enforces document ownership for all operations within a user-specific subcollection.
-     */
-    match /users/{userAccountId}/firebaseCollections/{firebaseCollectionId} {
-      allow get: if isOwner(userAccountId);
-      allow list: if isOwner(userAccountId);
-      allow create: if isOwner(userAccountId) && isValidNewFirebaseCollection(userAccountId);
-      allow update: if isExistingOwner(userAccountId) && isImmutableFirebaseCollection();
-      allow delete: if isExistingOwner(userAccountId);
+      /**
+       * @description Manages Firebase collection metadata owned by a specific user.
+       * @path        /users/{userAccountId}/firebaseCollections/{firebaseCollectionId}
+       * @allow       (get, create, update, delete) A user can manage their own collection documents.
+       * @allow       (list) An authenticated user can list their own collection documents.
+       * @deny        A user trying to access another user's collections.
+       * @principle   Enforces document ownership for all operations within a user-specific subcollection.
+       */
+      match /firebaseCollections/{firebaseCollectionId} {
+        allow get: if isOwner(userAccountId);
+        allow list: if isOwner(userAccountId);
+        allow create: if isOwner(userAccountId) && isValidNewFirebaseCollection(userAccountId);
+        allow update: if isExistingOwner(userAccountId) && isImmutableFirebaseCollection();
+        allow delete: if isExistingOwner(userAccountId);
+      }
     }
   }
 }
