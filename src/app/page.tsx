@@ -11,6 +11,7 @@ import {
   SidebarHeader,
   SidebarContent,
   SidebarFooter,
+  SidebarTrigger,
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import {
@@ -102,8 +103,16 @@ export default function Home() {
             </div>
           </SidebarFooter>
         </Sidebar>
-        <main className="flex-1 p-4 sm:p-8">
-          <AnalyzedCollectionsList analyzedCollections={analyzedCollections} />
+        <main className="flex flex-1 flex-col">
+          <header className="flex h-14 items-center gap-4 border-b bg-muted/40 px-4 lg:h-[60px] lg:px-6">
+            <SidebarTrigger className="lg:hidden" />
+            <div className="flex-1">
+              <h1 className="text-lg font-semibold">Dashboard de Análise</h1>
+            </div>
+          </header>
+          <div className="flex-1 p-4 sm:p-8">
+            <AnalyzedCollectionsList analyzedCollections={analyzedCollections} />
+          </div>
         </main>
       </div>
     </SidebarProvider>

@@ -21,7 +21,7 @@ import {
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
-const SIDEBAR_WIDTH = "16rem"
+const SIDEBAR_WIDTH = "18rem"
 const SIDEBAR_WIDTH_MOBILE = "18rem"
 const SIDEBAR_WIDTH_ICON = "3rem"
 const SIDEBAR_KEYBOARD_SHORTCUT = "b"
@@ -172,8 +172,6 @@ const Sidebar = React.forwardRef<
     ref
   ) => {
     const { isMobile, openMobile, setOpenMobile, state } = useSidebar()
-    
-    const width = state === 'expanded' ? 'var(--sidebar-width)' : '0px';
 
     if (isMobile) {
       return (
@@ -198,9 +196,12 @@ const Sidebar = React.forwardRef<
     return (
       <div
         ref={ref}
-        style={{ width: width }}
+        data-sidebar="sidebar"
+        data-state={state}
         className={cn(
-          "flex h-screen flex-col bg-sidebar text-sidebar-foreground transition-[width] duration-300 ease-in-out",
+          "hidden h-screen flex-col border-r bg-sidebar text-sidebar-foreground lg:flex",
+          "data-[state=expanded]:w-[var(--sidebar-width)] data-[state=collapsed]:w-[var(--sidebar-width-icon)]",
+          "transition-[width] duration-300 ease-in-out",
           className
         )}
         {...props}
@@ -224,7 +225,7 @@ const SidebarTrigger = React.forwardRef<
       data-sidebar="trigger"
       variant="ghost"
       size="icon"
-      className={cn("h-7 w-7", className)}
+      className={cn("size-8", className)}
       onClick={(event) => {
         onClick?.(event)
         toggleSidebar()
@@ -279,7 +280,7 @@ const SidebarFooter = React.forwardRef<
     <div
       ref={ref}
       data-sidebar="footer"
-      className={cn("flex flex-col gap-2 p-2 mt-auto", className)}
+      className={cn("mt-auto flex flex-col gap-2 p-2", className)}
       {...props}
     />
   )
