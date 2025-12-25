@@ -1,0 +1,130 @@
+/**
+ * This ruleset enforces a strict user-ownership model for a Firebase management application.
+ * All user-specific data is securely segregated, ensuring that users can only access and
+ * manage their own information and resources.
+ *
+ * Core Philosophy:
+ * The security model is built on the principle of least privilege. A user is the sole
+ * owner of their data tree, and no user can read, write, or list data belonging to
+ * another user. There is no public or shared data in this model.
+ *
+ * Data Structure:
+ * Data is hierarchically organized under the `/users/{userId}` path.
+ * - `/users/{userId}`: Contains the user's primary account document.
+ * - `/users/{userId}/firebaseCollections/{collectionId}`: Contains metadata about Firebase
+ *   collections owned by that specific user.
+ *
+ * Key Security Decisions:
+ * - No Global Access: Listing all users from the root `/users` collection is explicitly disallowed
+ *   to protect user privacy.
+ * - Strict Ownership: All access control decisions are based on the authenticated user's UID
+ *   matching the `userId` in the document path.
+ * - Path-Based Security: Authorization is derived directly from the document path, which
+ *   avoids costly and complex `get()` calls to other documents, leading to more performant
+ *   and secure rules.
+ * - Relational Integrity: On creation, documents must contain an owner ID field that matches
+ *   the user ID in the path. This owner ID is enforced as immutable on updates to prevent
+ *   documents from being "re-assigned" to another user.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ------------------------------------------------------------------------
+    // Helper Functions
+    // ------------------------------------------------------------------------
+
+    /**
+     * Checks if the user is authenticated.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * Checks if the currently authenticated user's UID matches the provided userId.
+     * This is the primary function for enforcing document ownership.
+     */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /**
+     * Checks for ownership on an existing document. Used for safe updates and deletes.
+     * Denies requests that target non-existent documents, preventing unintended side effects.
+     */
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
+    }
+
+    /**
+     * Validates required ownership fields for a new UserAccount document.
+     * Enforces that the document's internal ID matches the document ID in the path.
+     */
+    function isValidNewUserAccount(userAccountId) {
+      return request.resource.data.id == userAccountId;
+    }
+
+    /**
+     * Enforces immutability of core relational fields for a UserAccount document.
+     * Prevents the ownership link (the 'id' field) from being changed after creation.
+     */
+    function isImmutableUserAccount() {
+      return request.resource.data.id == resource.data.id;
+    }
+
+    /**
+     * Validates required ownership fields for a new FirebaseCollection document.
+     * Enforces that the document's internal userAccountId points back to the owner.
+     */
+    function isValidNewFirebaseCollection(userAccountId) {
+      return request.resource.data.userAccountId == userAccountId;
+    }
+
+    /**
+     * Enforces immutability of core relational fields for a FirebaseCollection document.
+     * Prevents the ownership link (the 'userAccountId' field) from being changed.
+     */
+    function isImmutableFirebaseCollection() {
+      return request.resource.data.userAccountId == resource.data.userAccountId;
+    }
+
+
+    // ------------------------------------------------------------------------
+    // Collection Rules
+    // ------------------------------------------------------------------------
+
+    /**
+     * @description Manages a user's own account document.
+     * @path        /users/{userAccountId}
+     * @allow       (create) A new user can create their own account document.
+     * @allow       (get, update, delete) An authenticated user can read, update, or delete their own account.
+     * @deny        (get) A user trying to read another user's account document.
+     * @deny        (list) Listing users is not allowed for privacy.
+     * @principle   Restricts access to a user's own data tree (Self-Creation & Ownership).
+     */
+    match /users/{userAccountId} {
+      allow get: if isOwner(userAccountId);
+      allow list: if false;
+      allow create: if isOwner(userAccountId) && isValidNewUserAccount(userAccountId);
+      allow update: if isExistingOwner(userAccountId) && isImmutableUserAccount();
+      allow delete: if isExistingOwner(userAccountId);
+    }
+
+    /**
+     * @description Manages Firebase collection metadata owned by a specific user.
+     * @path        /users/{userAccountId}/firebaseCollections/{firebaseCollectionId}
+     * @allow       (create, get, list, update, delete) A user can fully manage their own collection documents.
+     * @deny        (create) A user trying to create a collection document under another user's account.
+     * @deny        (get, list) A user trying to read or list another user's collections.
+     * @principle   Enforces document ownership for all operations within a user-specific subcollection.
+     */
+    match /users/{userAccountId}/firebaseCollections/{firebaseCollectionId} {
+      allow get: if isOwner(userAccountId);
+      allow list: if isOwner(userAccountId);
+      allow create: if isOwner(userAccountId) && isValidNewFirebaseCollection(userAccountId);
+      allow update: if isExistingOwner(userAccountId) && isImmutableFirebaseCollection();
+      allow delete: if isExistingOwner(userAccountId);
+    }
+  }
+}

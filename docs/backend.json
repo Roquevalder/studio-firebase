@@ -1,0 +1,107 @@
+{
+  "entities": {
+    "UserAccount": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "UserAccount",
+      "type": "object",
+      "description": "Represents a user account for accessing the Firebase Lister application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the UserAccount entity."
+        },
+        "email": {
+          "type": "string",
+          "description": "Email address of the user account.",
+          "format": "email"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Display name of the user."
+        }
+      },
+      "required": [
+        "id",
+        "email",
+        "displayName"
+      ]
+    },
+    "FirebaseCollection": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "FirebaseCollection",
+      "type": "object",
+      "description": "Represents a Firebase collection in the GestaoDeFrequencia database.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the FirebaseCollection entity."
+        },
+        "userAccountId": {
+          "type": "string",
+          "description": "Reference to UserAccount. (Relationship: UserAccount 1:N FirebaseCollection)"
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the Firebase collection."
+        },
+        "documentCount": {
+          "type": "number",
+          "description": "Number of documents in the collection."
+        }
+      },
+      "required": [
+        "id",
+        "userAccountId",
+        "name",
+        "documentCount"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userAccountId}",
+        "definition": {
+          "entityName": "UserAccount",
+          "schema": {
+            "$ref": "#/backend/entities/UserAccount"
+          },
+          "description": "Stores user account information. This collection uses the user's UID as the document ID.",
+          "params": [
+            {
+              "name": "userAccountId",
+              "description": "The unique identifier of the user account."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userAccountId}/firebaseCollections/{firebaseCollectionId}",
+        "definition": {
+          "entityName": "FirebaseCollection",
+          "schema": {
+            "$ref": "#/backend/entities/FirebaseCollection"
+          },
+          "description": "Stores Firebase collection data owned by a specific user. Access is controlled by the userAccountId path segment, ensuring only the owning user can manage these collections.",
+          "params": [
+            {
+              "name": "userAccountId",
+              "description": "The unique identifier of the user account (owner)."
+            },
+            {
+              "name": "firebaseCollectionId",
+              "description": "The unique identifier of the Firebase collection."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to be secure, scalable, and easily debuggable, following the core design principles and strategy mandates. It emphasizes authorization independence by avoiding hierarchical `get()` calls and denormalizing authorization data. The structure also promotes clarity of intent, utilizes DBAC (Database-Based Access Control) without custom claims, and supports secure `list` operations (QAPs). Invariants such as ownership and timestamps are implicitly supported by the schema.\n\nThe structure is segregated by user, with each user owning their FirebaseCollections. This promotes a homogeneous security posture within each user's data. The `FirebaseCollection` documents are stored under the user's document, enabling easy ownership-based rules.\n\nAuthorization Independence is achieved because access control to `FirebaseCollection` documents is determined solely by the user's ID in the path. No data from other documents is needed to determine access. QAPs are supported because listing collections is restricted to the user who owns the collections. Since there are no rules that depend on reading from other documents, list operations are simple and secure. The design also facilitates easy debugging because authorization is straightforward and localized to the path."
+  }
+}
