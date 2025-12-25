@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useUser, useFirestore, useAuth, useMemoFirebase } from '@/firebase';
-import { collection } from 'firebase/firestore';
-import { FolderKanban, Hash, HardDrive, ServerCrash, Loader2, LogIn, UserPlus } from 'lucide-react';
+import { collection, addDoc } from 'firebase/firestore';
+import { FolderKanban, Hash, HardDrive, ServerCrash, Loader2, LogIn, UserPlus, PlusCircle } from 'lucide-react';
 import { useCollection } from '@/firebase/firestore/use-collection';
 
 import { Button } from '@/components/ui/button';
@@ -26,29 +26,69 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AuthForm } from '@/components/auth-form';
-import { getCollectionsAndCounts } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 type CollectionInfo = {
+  id?: string;
   name: string;
-  count: number;
-  sizeBytes: number;
+  documentCount: number;
 };
 
 export default function Home() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const auth = useAuth();
-  const [collections, setCollections] = useState<CollectionInfo[] | null>(null);
-  const [totalSize, setTotalSize] = useState<number | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
+  
+  const [newCollectionName, setNewCollectionName] = useState('');
+  const [newCollectionCount, setNewCollectionCount] = useState(0);
+  const [isAdding, setIsAdding] = useState(false);
+
 
   const collectionsRef = useMemoFirebase(() => 
     user ? collection(firestore, `users/${user.uid}/firebaseCollections`) : null
   , [user, firestore]);
-  const { data: firebaseCollections, isLoading: isLoadingCollections } = useCollection(collectionsRef);
+  const { data: firebaseCollections, isLoading: isLoadingCollections } = useCollection<CollectionInfo>(collectionsRef);
+  
+  const handleAddCollection = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCollectionName || newCollectionCount <= 0 || !user || !collectionsRef) {
+      toast({
+        variant: "destructive",
+        title: "Entrada Inválida",
+        description: "Por favor, preencha o nome e uma contagem maior que zero.",
+      });
+      return;
+    }
+
+    setIsAdding(true);
+    try {
+      await addDoc(collectionsRef, {
+        name: newCollectionName,
+        documentCount: newCollectionCount,
+        userAccountId: user.uid,
+      });
+      toast({
+        title: "Sucesso!",
+        description: `Coleção "${newCollectionName}" adicionada.`,
+      });
+      setNewCollectionName('');
+      setNewCollectionCount(0);
+    } catch (err: any) {
+      console.error(err);
+      toast({
+        variant: "destructive",
+        title: "Erro ao adicionar coleção",
+        description: err.message || "Não foi possível salvar no banco de dados.",
+      });
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
 
   function formatBytes(bytes: number, decimals = 2) {
     if (bytes === 0) return '0 Bytes';
@@ -102,7 +142,7 @@ export default function Home() {
     }
     
     if (firebaseCollections) {
-       const totalSizeBytes = firebaseCollections.reduce((acc, coll) => acc + coll.documentCount, 0);
+       const totalSizeBytes = firebaseCollections.reduce((acc, coll) => acc + (coll.documentCount || 0), 0);
 
       return (
         <>
@@ -149,12 +189,12 @@ export default function Home() {
                       colSpan={3}
                       className="text-center text-muted-foreground h-24"
                     >
-                      Nenhuma coleção encontrada.
+                      Nenhuma coleção encontrada. Adicione uma abaixo.
                     </TableCell>
                   </TableRow>
                 ) : (
                   firebaseCollections.map((collection) => (
-                    <TableRow key={collection.name}>
+                    <TableRow key={collection.id}>
                       <TableCell className="font-medium">
                         {collection.name}
                       </TableCell>
@@ -182,7 +222,7 @@ export default function Home() {
   };
 
   return (
-    <main className="flex min-h-screen w-full flex-col items-center justify-center bg-background p-4 sm:p-8 font-body">
+    <main className="flex min-h-screen w-full flex-col items-center bg-background p-4 sm:p-8 font-body">
        <div className="w-full max-w-3xl">
         <Card className="shadow-lg">
           <CardHeader>
@@ -202,6 +242,46 @@ export default function Home() {
             </div>
           </CardContent>
         </Card>
+        
+        <Card className="mt-6 w-full max-w-3xl shadow-lg">
+          <CardHeader>
+            <CardTitle>Adicionar Nova Coleção (Teste)</CardTitle>
+            <CardDescription>Use este formulário para adicionar uma coleção de teste e verificar a conexão com o Firestore.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleAddCollection} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="collection-name">Nome da Coleção</Label>
+                <Input 
+                  id="collection-name"
+                  value={newCollectionName}
+                  onChange={(e) => setNewCollectionName(e.target.value)}
+                  placeholder="Ex: produtos"
+                  disabled={isAdding}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="collection-count">Contagem de Documentos</Label>
+                <Input
+                  id="collection-count"
+                  type="number"
+                  value={newCollectionCount}
+                  onChange={(e) => setNewCollectionCount(Number(e.target.value))}
+                  placeholder="Ex: 150"
+                  disabled={isAdding}
+                />
+              </div>
+              <Button type="submit" disabled={isAdding} className="w-full">
+                {isAdding ? (
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Adicionando...</>
+                ) : (
+                  <><PlusCircle className="mr-2" /> Adicionar Coleção</>
+                )}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+
       </div>
     </main>
   );
