@@ -19,3 +19,4 @@ jobs:
           firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
           channelId: live
           projectId: studio-7853618364-90d09
+        working-directory: ./studio-firebase
