@@ -51,7 +51,11 @@ interface SimpleAnalysis {
 interface GroupedAnalysis {
   type: 'grouped';
   name: string;
-  groupCounts: { [groupKey: string]: number };
+  groups: {
+    codigoIg: string;
+    igrejaName: string;
+    count: number;
+  }[];
   totalDocs: number;
 }
 
@@ -62,7 +66,6 @@ type AnalyzedCollection = SimpleAnalysis | GroupedAnalysis;
 export default function Home() {
   const { user, isUserLoading } = useUser();
   const auth = useAuth();
-  const firestore = useFirestore();
   const [analyzedCollections, setAnalyzedCollections] = useState<AnalyzedCollection[]>([]);
 
   if (isUserLoading) {
@@ -141,21 +144,37 @@ function CollectionManager({ analyzedCollections, setAnalyzedCollections }: Coll
     setIsLoading(true);
     try {
       if (nameToAnalyse === 'Cultos') {
+        // 1. Fetch Igrejas and create a map
+        const igrejasRef = collection(firestore, 'Igrejas');
+        const igrejasSnapshot = await getDocs(igrejasRef);
+        const igrejasMap = new Map<string, string>();
+        igrejasSnapshot.forEach(doc => {
+          igrejasMap.set(doc.id, doc.data().igreja || 'Nome não encontrado');
+        });
+
+        // 2. Fetch Cultos and group by codigoIg
         const cultosRef = collection(firestore, 'Cultos');
-        const querySnapshot = await getDocs(cultosRef);
+        const cultosSnapshot = await getDocs(cultosRef);
         const counts: { [key: string]: number } = {};
         let totalDocs = 0;
-        querySnapshot.forEach((doc) => {
+        cultosSnapshot.forEach((doc) => {
           const data = doc.data();
           const codigoIg = data.codigoIg || 'Sem codigoIg';
           counts[codigoIg] = (counts[codigoIg] || 0) + 1;
           totalDocs++;
         });
 
+        // 3. Combine data
+        const groups = Object.entries(counts).map(([codigoIg, count]) => ({
+          codigoIg,
+          igrejaName: igrejasMap.get(codigoIg) || 'Igreja desconhecida',
+          count,
+        }));
+
         const newAnalysis: GroupedAnalysis = {
           type: 'grouped',
           name: nameToAnalyse,
-          groupCounts: counts,
+          groups: groups,
           totalDocs: totalDocs
         };
         setAnalyzedCollections(prev => [...prev, newAnalysis]);
@@ -286,16 +305,18 @@ function AnalyzedCollectionsList({ analyzedCollections }: AnalyzedCollectionsLis
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>Código da Igreja (codigoIg)</TableHead>
+                                    <TableHead>Código da Igreja</TableHead>
+                                    <TableHead>Nome da Igreja</TableHead>
                                     <TableHead className="text-right">Documentos</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {Object.entries(cultosAnalysis.groupCounts)
-                                 .sort(([keyA], [keyB]) => keyA.localeCompare(keyB))
-                                 .map(([codigoIg, count]) => (
+                                {cultosAnalysis.groups
+                                 .sort((a, b) => a.codigoIg.localeCompare(b.codigoIg))
+                                 .map(({ codigoIg, igrejaName, count }) => (
                                     <TableRow key={codigoIg}>
                                         <TableCell className="font-medium">{codigoIg}</TableCell>
+                                        <TableCell>{igrejaName}</TableCell>
                                         <TableCell className="text-right">{count.toLocaleString()}</TableCell>
                                     </TableRow>
                                 ))}
