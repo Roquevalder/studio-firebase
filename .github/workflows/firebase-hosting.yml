@@ -10,6 +10,9 @@ jobs:
     runs-on: ubuntu-latest
     env:
       FIREBASE_CLI_EXPERIMENTS: webframeworks
+    defaults:
+      run:
+        working-directory: ./studio-firebase
     steps:
       - uses: actions/checkout@v4
 
@@ -19,4 +22,4 @@ jobs:
           firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
           channelId: live
           projectId: studio-7853618364-90d09
-        working-directory: ./studio-firebase
+          entryPoint: ./studio-firebase
