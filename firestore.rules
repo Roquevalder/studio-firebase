@@ -7,18 +7,15 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
-    }
-    
-    // As a user, I want to be able to create a document in the firebaseCollections collection
-    // As a user, I want to be able to read a document in the firebaseCollections collection that I have created
-    // As a user, I want to be able to update a document in the firebaseCollections collection that I have created
-    // As a user, I want to be able to delete a document in the firebaseCollections collection that I have created
-    match /firebaseCollections/{document} {
+    // Allow authenticated users to read from any collection for analysis purposes.
+    // This allows getCountFromServer to work on user-specified collections.
+    match /{document=**} {
       allow read: if isSignedIn();
-      allow create: if request.auth.uid == request.resource.data.userAccountId;
-      allow update, delete: if request.auth.uid == resource.data.userAccountId;
+    }
+
+    // Keep write rules for the firebaseCollections metadata, scoped to the user.
+    match /firebaseCollections/{docId} {
+      allow write: if isSignedIn() && request.auth.uid == request.resource.data.userAccountId;
     }
   }
 }
