@@ -144,12 +144,16 @@ function CollectionManager({ analyzedCollections, setAnalyzedCollections }: Coll
     setIsLoading(true);
     try {
       if (nameToAnalyse === 'Cultos') {
-        // 1. Fetch Igrejas and create a map
+        // 1. Fetch Igrejas and create a map from codigoIg to igreja name
         const igrejasRef = collection(firestore, 'Igrejas');
         const igrejasSnapshot = await getDocs(igrejasRef);
         const igrejasMap = new Map<string, string>();
         igrejasSnapshot.forEach(doc => {
-          igrejasMap.set(doc.id, doc.data().igreja || 'Nome não encontrado');
+          const data = doc.data();
+          // Use the 'codigoIg' field from the document data as the key
+          if (data.codigoIg) {
+            igrejasMap.set(data.codigoIg, data.igreja || 'Nome não encontrado');
+          }
         });
 
         // 2. Fetch Cultos and group by codigoIg
