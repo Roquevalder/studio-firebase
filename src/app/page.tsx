@@ -322,7 +322,7 @@ function AnalyzedCollectionsList({ analyzedCollections }: AnalyzedCollectionsLis
                                         <TableCell className="text-right">{count.toLocaleString()}</TableCell>
                                     </TableRow>
                                 ))}
-                            </TableBody>
+                            </Body>
                         </Table>
                     </CardContent>
                 </Card>
